@@ -19,7 +19,7 @@ const App = () => {
   const [error, setError] = useState(null);
   const [tabIndex, setTabIndex] = useState(0); // State to handle the selected tab
 
-  const factoryAddress = '0x5D185479b9D85C39b0878e6b74D2F167f431da96'; // Replace with your factory contract address
+  const factoryAddress = '0x4eEc7C65E57aC33E8b27167B4fEca784f0010F1f'; // Replace with your factory contract address
 
   const fetchProducts = async (factoryContract, web3Instance) => {
     try {
@@ -176,6 +176,33 @@ const App = () => {
     }
   };
 
+  const handleDelivery = async (address) => {
+    if (!address || typeof address !== 'string') {
+      setError('Product contract address is not specified or is invalid');
+      console.error('Product contract address is not specified or is invalid');
+      return;
+    }
+
+    try {
+      console.log(`Withdrawing funds for product at address: ${address}`);
+      const gasPrice = BigInt(web3.utils.toWei('2', 'gwei'));
+      const gasLimit = BigInt(900000);
+      const productContract = new web3.eth.Contract(ProductABI.abi, address);
+
+      const tx = await productContract.methods.withdrawProductPrice().send({
+        from: accounts[0],
+        gasPrice: gasPrice.toString(),
+        gas: gasLimit.toString(),
+      });
+
+      console.log('Transaction:', tx);
+      await fetchProducts(factoryContract, web3);
+    } catch (error) {
+      console.error('Error withdrawing fund to seller:', error);
+      setError('Failed to withdraw funds to seller. Check console for details.');
+    }
+  };
+
   const handleChangeTab = (event, newValue) => {
     setTabIndex(newValue);
   };
@@ -185,47 +212,37 @@ const App = () => {
   }
 
   return (
-      <div className="container">
-        {error && <div style={{ color: 'red' }}>{error}</div>}
-        <h1>Decentralized Marketplace</h1>
-        <BasicTabs value={tabIndex} handleChange={handleChangeTab}>
-          <div>
-            <AddProductForm
-                productName={productName}
-                setProductName={setProductName}
-                productPrice={productPrice}
-                setProductPrice={setProductPrice}
-                handleAddProduct={handleAddProduct}
-            />
-            <ProductList
-                products={products.filter(product => product.owner === accounts[0])}
-                web3={web3}
-                handlePurchaseProduct={handlePurchaseProduct}
-                showPurchaseButton={false} // No purchase button in SELLER tab
-            />
-            <Button variant="contained" onClick={onClickDelivered}>
-            Delivered
-            </Button>
-
-          </div>
-          <div>
-            <ProductList
-                products={products.filter(product => product.owner !== accounts[0])}
-                web3={web3}
-                handlePurchaseProduct={handlePurchaseProduct}
-                showPurchaseButton={true} // Show purchase button in BUYER tab
-            />
-          </div>
-        </BasicTabs>
-      </div>
+    <div className="container">
+      {error && <div style={{ color: 'red' }}>{error}</div>}
+      <h1>Decentralized Marketplace</h1>
+      <BasicTabs value={tabIndex} handleChange={handleChangeTab}>
+        <div>
+          <AddProductForm
+            productName={productName}
+            setProductName={setProductName}
+            productPrice={productPrice}
+            setProductPrice={setProductPrice}
+            handleAddProduct={handleAddProduct}
+          />
+          <ProductList
+            products={products}//add product filter only show current accounts products
+            web3={web3}
+            handlePurchaseProduct={handlePurchaseProduct}
+            handleDelivery={handleDelivery} // Pass handleDelivery to ProductList
+            showPurchaseButton={false} // No purchase button in SELLER tab
+          />
+        </div>
+        <div>
+          <ProductList
+            products={products}//add product filter only show other accounts products
+            web3={web3}
+            handlePurchaseProduct={handlePurchaseProduct}
+            showPurchaseButton={true} // Show purchase button in BUYER tab
+          />
+        </div>
+      </BasicTabs>
+    </div>
   );
 };
 
 export default App;
-
-//ToDo
-//Bug Buyer for second account not showing correct products(probably from not updated account)
-//Search for buyer products
-//change currency to wei
-//git
-//update product smart contract into escrow
