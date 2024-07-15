@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "ipfs-http-client": "^60.0.1"
+  },
+  "devDependencies": {
+    "eslint": "^9.7.0",
+    "hardhat": "^2.22.6"
+  }
+}
