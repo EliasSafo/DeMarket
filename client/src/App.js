@@ -6,6 +6,7 @@ import './App.css';
 import BasicTabs from './components/Tabs/Tab';
 import AddProductForm from './components/AddProductForm/AddProductForm';
 import ProductList from './components/ProductList/ProductList';
+import TransporterForm from './components/TransporterForm/TransporterForm';
 import Button from '@mui/material/Button';
 
 const App = () => {
@@ -19,7 +20,7 @@ const App = () => {
   const [error, setError] = useState(null);
   const [tabIndex, setTabIndex] = useState(0); // State to handle the selected tab
 
-  const factoryAddress = '0x4eEc7C65E57aC33E8b27167B4fEca784f0010F1f'; // Replace with your factory contract address
+  const factoryAddress = '0x9F44F8DbD040D5be8aD6e172a5f2a7681e454FC4'; // Replace with your factory contract address
 
   const fetchProducts = async (factoryContract, web3Instance) => {
     try {
@@ -115,9 +116,10 @@ const App = () => {
       console.log(`Adding product with name: ${productName}, price: ${priceInWei}`);
 
       const gasPrice = web3.utils.toWei('2', 'gwei');
-      const gasLimit = 900000;
+      const gasLimit = 2000000; // Adjust if necessary
 
       console.log('Gas Price:', gasPrice);
+      console.log('Gas Limit:', gasLimit);
 
       const tx = await factoryContract.methods.createProduct(productName, priceInWei).send({
         from: accounts[0],
@@ -130,6 +132,7 @@ const App = () => {
       await fetchProducts(factoryContract, web3);
     } catch (error) {
       console.error('Error adding product:', error);
+      console.error('Error details:', error.response ? error.response : error.message);
       setError('Failed to add product. Check console for details.');
     }
   };
@@ -144,7 +147,7 @@ const App = () => {
       console.log(`Purchasing product at address: ${address} with price: ${price}`);
       const priceInWei = BigInt(price);
       const gasPrice = BigInt(web3.utils.toWei('2', 'gwei'));
-      const gasLimit = BigInt(900000);
+      const gasLimit = BigInt(900000); // Adjust if necessary
 
       const productContract = new web3.eth.Contract(ProductABI.abi, address);
 
@@ -186,7 +189,7 @@ const App = () => {
     try {
       console.log(`Withdrawing funds for product at address: ${address}`);
       const gasPrice = BigInt(web3.utils.toWei('2', 'gwei'));
-      const gasLimit = BigInt(900000);
+      const gasLimit = BigInt(900000); // Adjust if necessary
       const productContract = new web3.eth.Contract(ProductABI.abi, address);
 
       const tx = await productContract.methods.withdrawProductPrice().send({
@@ -203,6 +206,38 @@ const App = () => {
     }
   };
 
+  const handleCreateTransporter = async (address, fee) => {
+    if (!web3 || !accounts) {
+      setError('Web3, accounts not loaded properly.');
+      return;
+    }
+
+    try {
+      console.log(`Creating transporter with fee: ${fee} ETH for product at address: ${address}`);
+      const feeInWei = web3.utils.toWei(fee.toString(), 'ether');
+      const gasPrice = BigInt(web3.utils.toWei('2', 'gwei'));
+      const gasLimit = BigInt(900000); // Adjust if necessary
+
+      const productContract = new web3.eth.Contract(ProductABI.abi, address);
+      const priceInWei = await productContract.methods.price().call();
+      console.log('Product price in Wei:', priceInWei);
+
+      const tx = await productContract.methods.createTransporter(feeInWei).send({
+        from: accounts[0],
+        value: priceInWei.toString(), // Transporter deposits the product price as security deposit
+        gasPrice: gasPrice.toString(),
+        gas: gasLimit.toString(),
+      });
+
+      console.log('Transaction:', tx);
+      await fetchProducts(factoryContract, web3);
+    } catch (error) {
+      console.error('Error creating transporter:', error);
+      console.error('Error details:', error.response ? error.response : error.message);
+      setError('Failed to create transporter. Check console for details.');
+    }
+  };
+
   const handleChangeTab = (event, newValue) => {
     setTabIndex(newValue);
   };
@@ -212,36 +247,42 @@ const App = () => {
   }
 
   return (
-    <div className="container">
-      {error && <div style={{ color: 'red' }}>{error}</div>}
-      <h1>Decentralized Marketplace</h1>
-      <BasicTabs value={tabIndex} handleChange={handleChangeTab}>
-        <div>
-          <AddProductForm
-            productName={productName}
-            setProductName={setProductName}
-            productPrice={productPrice}
-            setProductPrice={setProductPrice}
-            handleAddProduct={handleAddProduct}
-          />
-          <ProductList
-            products={products}//add product filter only show current accounts products
-            web3={web3}
-            handlePurchaseProduct={handlePurchaseProduct}
-            handleDelivery={handleDelivery} // Pass handleDelivery to ProductList
-            showPurchaseButton={false} // No purchase button in SELLER tab
-          />
-        </div>
-        <div>
-          <ProductList
-            products={products}//add product filter only show other accounts products
-            web3={web3}
-            handlePurchaseProduct={handlePurchaseProduct}
-            showPurchaseButton={true} // Show purchase button in BUYER tab
-          />
-        </div>
-      </BasicTabs>
-    </div>
+      <div className="container">
+        {error && <div style={{ color: 'red' }}>{error}</div>}
+        <h1>Decentralized Marketplace</h1>
+        <BasicTabs value={tabIndex} handleChange={handleChangeTab}>
+          <div>
+            <AddProductForm
+                productName={productName}
+                setProductName={setProductName}
+                productPrice={productPrice}
+                setProductPrice={setProductPrice}
+                handleAddProduct={handleAddProduct}
+            />
+            <ProductList
+                products={products.filter(product => product.owner === accounts[0])}
+                web3={web3}
+                handlePurchaseProduct={handlePurchaseProduct}
+                handleDelivery={handleDelivery} // Pass handleDelivery to ProductList
+                showPurchaseButton={false} // No purchase button in SELLER tab
+            />
+          </div>
+          <div>
+            <ProductList
+                products={products.filter(product => product.owner !== accounts[0])}
+                web3={web3}
+                handlePurchaseProduct={handlePurchaseProduct}
+                showPurchaseButton={true} // Show purchase button in BUYER tab
+            />
+          </div>
+          <div>
+            <TransporterForm
+                products={products}
+                handleCreateTransporter={handleCreateTransporter}
+            />
+          </div>
+        </BasicTabs>
+      </div>
   );
 };
 
