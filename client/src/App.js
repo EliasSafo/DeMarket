@@ -4,27 +4,25 @@ import ProductFactoryABI from './abis/ProductFactory.json';
 import ProductABI from './abis/ProductEscrow.json';
 import './App.css';
 import BasicTabs from './components/Tabs/Tab';
-import AddProductForm from './components/AddProductForm/AddProductForm';
-import ProductList from './components/ProductList/ProductList';
-import TransporterForm from './components/TransporterForm/TransporterForm';
-import Button from '@mui/material/Button';
+import SellerView from './components/SellerView/SellerView';
+import BuyerView from './components/BuyerView/BuyerView';
+import DistributorView from './components/DistributorView/DistributorView';
 
 const App = () => {
   const [web3, setWeb3] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [factoryContract, setFactoryContract] = useState(null);
-  const [productName, setProductName] = useState('');
-  const [productPrice, setProductPrice] = useState('');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tabIndex, setTabIndex] = useState(0); // State to handle the selected tab
 
-  const factoryAddress = '0x9F44F8DbD040D5be8aD6e172a5f2a7681e454FC4'; // Replace with your factory contract address
+  const factoryAddress = '0x473c8AdaE346EC83e28d40bf9FD65aE9ae5F727e'; // Replace with your factory contract address
 
   const fetchProducts = async (factoryContract, web3Instance) => {
     try {
       const productAddresses = await factoryContract.methods.getProducts().call();
+      console.log('Product Addresses:', productAddresses); // Log product addresses
       const productsArray = [];
       for (let address of productAddresses) {
         const productContract = new web3Instance.eth.Contract(ProductABI.abi, address);
@@ -32,12 +30,17 @@ const App = () => {
         const price = await productContract.methods.price().call();
         const owner = await productContract.methods.owner().call();
         const purchased = await productContract.methods.purchased().call();
+        const buyer = await productContract.methods.buyer().call(); // Fetch buyer
+        const transporter = await productContract.methods.transporter().call(); // Fetch transporter
+
         productsArray.push({
           address,
           name,
           price,
           owner,
           purchased,
+          buyer, // Add buyer to the product object
+          transporter, // Add transporter to the product object
         });
       }
       setProducts(productsArray);
@@ -100,7 +103,7 @@ const App = () => {
     init();
   }, []);
 
-  const handleAddProduct = async () => {
+  const handleAddProduct = async (productName, productPrice) => {
     if (!web3 || !accounts || !factoryContract) {
       setError('Web3, accounts, or contract not loaded properly.');
       return;
@@ -137,103 +140,49 @@ const App = () => {
     }
   };
 
-  const handlePurchaseProduct = async (address, price) => {
-    if (!web3 || !accounts || !factoryContract) {
+  const handleBuyProduct = async (productAddress, productPrice) => {
+    console.log("buy button ");
+    if (!web3 || !accounts || accounts.length === 0) {
       setError('Web3, accounts, or contract not loaded properly.');
       return;
     }
 
     try {
-      console.log(`Purchasing product at address: ${address} with price: ${price}`);
-      const priceInWei = BigInt(price);
-      const gasPrice = BigInt(web3.utils.toWei('2', 'gwei'));
-      const gasLimit = BigInt(900000); // Adjust if necessary
+      const productContract = new web3.eth.Contract(ProductABI.abi, productAddress);
 
-      const productContract = new web3.eth.Contract(ProductABI.abi, address);
-
-      const balance = BigInt(await web3.eth.getBalance(accounts[0]));
-      console.log('Buyer account balance (in Wei):', balance);
-
-      const transactionCost = priceInWei + (gasLimit * gasPrice);
-      console.log('Transaction cost (in Wei):', transactionCost.toString());
-
-      if (balance < transactionCost) {
-        setError('Insufficient funds for transaction');
-        console.error('Insufficient funds for transaction');
-        return;
-      }
-
-      const tx = await productContract.methods.depositPurchase().send({
+      await productContract.methods.depositPurchase().send({
         from: accounts[0],
-        value: priceInWei.toString(),
-        gasPrice: gasPrice.toString(),
-        gas: gasLimit.toString(),
+        value: productPrice,
       });
 
-      console.log('Transaction:', tx);
-
-      await fetchProducts(factoryContract, web3);
+      console.log('Product purchased successfully!');
+      await fetchProducts(factoryContract, web3); // Refresh the products list
     } catch (error) {
       console.error('Error purchasing product:', error);
       setError('Failed to purchase product. Check console for details.');
     }
   };
 
-  const handleDelivery = async (address) => {
-    if (!address || typeof address !== 'string') {
-      setError('Product contract address is not specified or is invalid');
-      console.error('Product contract address is not specified or is invalid');
+  const handleCreateDistributor = async (productAddress, fee) => {
+    console.log("Creating distributor for product:", productAddress, "with fee:", fee);
+    if (!web3 || !accounts || accounts.length === 0) {
+      setError('Web3, accounts, or contract not loaded properly.');
       return;
     }
 
     try {
-      console.log(`Withdrawing funds for product at address: ${address}`);
-      const gasPrice = BigInt(web3.utils.toWei('2', 'gwei'));
-      const gasLimit = BigInt(900000); // Adjust if necessary
-      const productContract = new web3.eth.Contract(ProductABI.abi, address);
+      const feeInWei = web3.utils.toWei(fee, 'wei');
+      const productContract = new web3.eth.Contract(ProductABI.abi, productAddress);
+      console.log("Product contract:", productContract);
 
-      const tx = await productContract.methods.withdrawProductPrice().send({
+      await productContract.methods.createTransporter(feeInWei).send({
         from: accounts[0],
-        gasPrice: gasPrice.toString(),
-        gas: gasLimit.toString(),
       });
 
-      console.log('Transaction:', tx);
-      await fetchProducts(factoryContract, web3);
-    } catch (error) {
-      console.error('Error withdrawing fund to seller:', error);
-      setError('Failed to withdraw funds to seller. Check console for details.');
-    }
-  };
-
-  const handleCreateTransporter = async (address, fee) => {
-    if (!web3 || !accounts) {
-      setError('Web3, accounts not loaded properly.');
-      return;
-    }
-
-    try {
-      console.log(`Creating transporter with fee: ${fee} ETH for product at address: ${address}`);
-      const feeInWei = web3.utils.toWei(fee.toString(), 'ether');
-      const gasPrice = BigInt(web3.utils.toWei('2', 'gwei'));
-      const gasLimit = BigInt(900000); // Adjust if necessary
-
-      const productContract = new web3.eth.Contract(ProductABI.abi, address);
-      const priceInWei = await productContract.methods.price().call();
-      console.log('Product price in Wei:', priceInWei);
-
-      const tx = await productContract.methods.createTransporter(feeInWei).send({
-        from: accounts[0],
-        value: priceInWei.toString(), // Transporter deposits the product price as security deposit
-        gasPrice: gasPrice.toString(),
-        gas: gasLimit.toString(),
-      });
-
-      console.log('Transaction:', tx);
-      await fetchProducts(factoryContract, web3);
+      console.log('Transporter created successfully!');
+      await fetchProducts(factoryContract, web3); // Refresh the products list
     } catch (error) {
       console.error('Error creating transporter:', error);
-      console.error('Error details:', error.response ? error.response : error.message);
       setError('Failed to create transporter. Check console for details.');
     }
   };
@@ -250,35 +199,31 @@ const App = () => {
       <div className="container">
         {error && <div style={{ color: 'red' }}>{error}</div>}
         <h1>Decentralized Marketplace</h1>
-        <BasicTabs value={tabIndex} handleChange={handleChangeTab}>
-          <div>
-            <AddProductForm
-                productName={productName}
-                setProductName={setProductName}
-                productPrice={productPrice}
-                setProductPrice={setProductPrice}
-                handleAddProduct={handleAddProduct}
-            />
-            <ProductList
-                products={products.filter(product => product.owner === accounts[0])}
-                web3={web3}
-                handlePurchaseProduct={handlePurchaseProduct}
-                handleDelivery={handleDelivery} // Pass handleDelivery to ProductList
-                showPurchaseButton={false} // No purchase button in SELLER tab
-            />
-          </div>
-          <div>
-            <ProductList
-                products={products.filter(product => product.owner !== accounts[0])}
-                web3={web3}
-                handlePurchaseProduct={handlePurchaseProduct}
-                showPurchaseButton={true} // Show purchase button in BUYER tab
-            />
-          </div>
-          <div>
-            <TransporterForm
+        <BasicTabs value={tabIndex} handleChange={(event, newValue) => setTabIndex(newValue)}>
+          <div label="SELLER">
+            <SellerView
                 products={products}
-                handleCreateTransporter={handleCreateTransporter}
+                setProducts={setProducts} // Pass setProducts to SellerView
+                handleAddProduct={handleAddProduct}
+                web3={web3}
+                contractAbi={ProductABI.abi} // Pass the contract ABI
+                accounts={accounts} // Pass accounts to SellerView
+            />
+          </div>
+          <div label="BUYER">
+            <BuyerView
+                products={products}
+                web3={web3}
+                handleBuyProduct={handleBuyProduct}
+                accounts={accounts}
+            />
+          </div>
+          <div label="DISTRIBUTOR">
+            <DistributorView
+                products={products}
+                web3={web3}
+                accounts={accounts} // Pass accounts to DistributorView
+                handleCreateDistributor={handleCreateDistributor}
             />
           </div>
         </BasicTabs>

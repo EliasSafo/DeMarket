@@ -1,49 +1,33 @@
 import React from 'react';
-import Button from '@mui/material/Button';
 
-const ProductList = ({ products, web3, handlePurchaseProduct, handleDelivery, showPurchaseButton }) => {
+const ProductList = ({ products, web3, showButton, handleBuyProduct, handleShowDistributors }) => {
+  if (!web3 || !web3.utils) {
+    console.error('Web3 is not initialized or missing utils');
+    return null;
+  }
+
+  if (!products || products.length === 0) {
+    return <div>No products available</div>;
+  }
+
   return (
-    <div>
-      <h3>Products</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Price (ETH)</th>
-            <th>Owner</th>
-            <th>Purchased</th>
-            {showPurchaseButton ? <th>Purchase</th> : <th>Actions</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {products.map((product) => (
-            <tr key={product.address}>
-              <td>{product?.id?.toString()}</td>
-              <td>{product?.name}</td>
-              <td>{web3.utils.fromWei(product?.price.toString(), 'ether')} ETH</td>
-              <td>{product?.owner}</td>
-              <td>{product?.purchased ? 'Yes' : 'No'}</td>
-              {showPurchaseButton ? (
-                <td>
-                  <Button variant="contained" onClick={() => handlePurchaseProduct(product.address, product.price)}>
-                    Purchase
-                  </Button>
-                </td>
-              ) : (
-                <td>
-                  {product?.purchased && (
-                    <Button variant="contained" onClick={() => handleDelivery(product.address)}>
-                      Withdraw Funds
-                    </Button>
-                  )}
-                </td>
+      <div className="product-list">
+        {products.map(product => (
+            <div key={product.address} className="product-card">
+              <img src={product.image} alt={product.name} />
+              <h3>{product.name}</h3>
+              <p>Price: {web3.utils.fromWei(product.price.toString(), 'ether')} ETH</p>
+              <p>Owner: {product.owner}</p>
+              <p>Purchased: {product.purchased ? 'Yes' : 'No'}</p>
+              {showButton && handleBuyProduct && (
+                  <button onClick={() => handleBuyProduct(product.address, product.price)}>Buy</button>
               )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+              {handleShowDistributors && (
+                  <button onClick={() => handleShowDistributors(product)}>Info</button>
+              )}
+            </div>
+        ))}
+      </div>
   );
 };
 
