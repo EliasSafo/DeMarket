@@ -13,6 +13,7 @@ contract ProductEscrow {
     uint public deliveryFee;
     uint public securityDeposit;
 
+
     struct TransporterFees {
         uint fee;
     }
@@ -49,6 +50,7 @@ contract ProductEscrow {
     function depositPurchase() public payable {
         require(!purchased, "Product already purchased");
         require(msg.value >= price, "Not enough Ether");
+        require(msg.sender != owner, "Cannot buy own product");
 
         buyer = payable(msg.sender);
         purchased = true;
@@ -67,17 +69,9 @@ contract ProductEscrow {
 
         deliveryFee = msg.value;
         transporter = _transporter;
-        // Refund all other transporters
-        for (uint i = 0; i < transporterAddresses.length; i++) {
-            address transporterAddress = transporterAddresses[i];
-            if (transporterAddress != _transporter) {
-                payable(transporterAddress).transfer(price);
-            }
-        }
     }
 
-    function createTransporter(uint _feeInEther) public payable {
-        require(msg.value == price, "Transporter has to deposit security deposit");
+    function createTransporter(uint _feeInEther) public {
         require(transporters[msg.sender].fee == 0, "Transporter already exists");
 
         // Convert fee from ether to wei
@@ -100,3 +94,8 @@ contract ProductEscrow {
         return (transporterAddresses, fees);
     }
 }
+
+//confirmorder onlyseller
+
+
+//fix filtering

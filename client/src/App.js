@@ -17,11 +17,12 @@ const App = () => {
   const [error, setError] = useState(null);
   const [tabIndex, setTabIndex] = useState(0); // State to handle the selected tab
 
-  const factoryAddress = '0x86C94D8151C6bFb1076c6424EA32deD472d09669'; // Replace with your factory contract address
+  const factoryAddress = '0x473c8AdaE346EC83e28d40bf9FD65aE9ae5F727e'; // Replace with your factory contract address
 
   const fetchProducts = async (factoryContract, web3Instance) => {
     try {
       const productAddresses = await factoryContract.methods.getProducts().call();
+      console.log('Product Addresses:', productAddresses); // Log product addresses
       const productsArray = [];
       for (let address of productAddresses) {
         const productContract = new web3Instance.eth.Contract(ProductABI.abi, address);
@@ -30,6 +31,7 @@ const App = () => {
         const owner = await productContract.methods.owner().call();
         const purchased = await productContract.methods.purchased().call();
         const buyer = await productContract.methods.buyer().call(); // Fetch buyer
+        const transporter = await productContract.methods.transporter().call(); // Fetch transporter
 
         productsArray.push({
           address,
@@ -38,6 +40,7 @@ const App = () => {
           owner,
           purchased,
           buyer, // Add buyer to the product object
+          transporter, // Add transporter to the product object
         });
       }
       setProducts(productsArray);
@@ -48,8 +51,6 @@ const App = () => {
       setError('Failed to fetch products. Check console for details.');
     }
   };
-
-
 
   useEffect(() => {
     const init = async () => {
@@ -163,18 +164,18 @@ const App = () => {
   };
 
   const handleCreateDistributor = async (productAddress, fee) => {
-    console.log("create Distributor ");
+    console.log("Creating distributor for product:", productAddress, "with fee:", fee);
     if (!web3 || !accounts || accounts.length === 0) {
       setError('Web3, accounts, or contract not loaded properly.');
       return;
     }
 
     try {
-      const feeInEther = web3.utils.toWei(fee, 'ether');
+      const feeInWei = web3.utils.toWei(fee, 'wei');
       const productContract = new web3.eth.Contract(ProductABI.abi, productAddress);
-      console.log("yikes");
+      console.log("Product contract:", productContract);
 
-      await productContract.methods.createTransporter(feeInEther).send({
+      await productContract.methods.createTransporter(feeInWei).send({
         from: accounts[0],
       });
 
@@ -185,7 +186,6 @@ const App = () => {
       setError('Failed to create transporter. Check console for details.');
     }
   };
-
 
   const handleChangeTab = (event, newValue) => {
     setTabIndex(newValue);
@@ -199,19 +199,22 @@ const App = () => {
       <div className="container">
         {error && <div style={{ color: 'red' }}>{error}</div>}
         <h1>Decentralized Marketplace</h1>
-        <BasicTabs value={tabIndex} handleChange={handleChangeTab}>
+        <BasicTabs value={tabIndex} handleChange={(event, newValue) => setTabIndex(newValue)}>
           <div label="SELLER">
             <SellerView
                 products={products}
+                setProducts={setProducts} // Pass setProducts to SellerView
                 handleAddProduct={handleAddProduct}
                 web3={web3}
+                contractAbi={ProductABI.abi} // Pass the contract ABI
+                accounts={accounts} // Pass accounts to SellerView
             />
           </div>
           <div label="BUYER">
             <BuyerView
                 products={products}
                 web3={web3}
-                handleBuyProduct = {handleBuyProduct}
+                handleBuyProduct={handleBuyProduct}
                 accounts={accounts}
             />
           </div>
@@ -219,6 +222,7 @@ const App = () => {
             <DistributorView
                 products={products}
                 web3={web3}
+                accounts={accounts} // Pass accounts to DistributorView
                 handleCreateDistributor={handleCreateDistributor}
             />
           </div>

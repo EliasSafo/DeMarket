@@ -33,7 +33,7 @@ const BuyerView = ({ products, web3, handleBuyProduct, accounts }) => {
                 <button onClick={() => handleTabChange('sale')}>Sale</button>
                 <button onClick={() => handleTabChange('inProgress')}>In Progress</button>
             </div>
-            <div style={{ float: 'right', width: '90%' }}>
+            <div>
                 <div className="search">
                     <input
                         type="text"
@@ -45,7 +45,7 @@ const BuyerView = ({ products, web3, handleBuyProduct, accounts }) => {
                 <div className="content">
                     {tab === 'sale' && (
                         <ProductList
-                            products={productsForSale}
+                            products={products}//add filter
                             web3={web3}
                             showButton={true}
                             handleBuyProduct={handleBuyProduct}
@@ -53,7 +53,7 @@ const BuyerView = ({ products, web3, handleBuyProduct, accounts }) => {
                     )}
                     {tab === 'inProgress' && (
                         <ProductList
-                            products={productsInProgress}
+                            products={products}//add filter
                             web3={web3}
                             showButton={false} // No buy button needed for in-progress purchases
                         />
