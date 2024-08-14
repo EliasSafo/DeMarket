@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from 'react-modal';
 import ProductList from '../ProductList/ProductList';
 import './DistributorView.css'; // Ensure you create and import a CSS file for styling
+import ProductABI from '../../abis/ProductEscrow.json';
 
 Modal.setAppElement('#root');
 
@@ -14,6 +15,7 @@ const DistributorView = ({ products, web3, accounts, handleCreateDistributor }) 
     const handleOpenModal = (product) => {
         console.log("product:", product);
         setSelectedProduct(product);
+        setShowModal(true);
     };
 
     const handleCloseModal = () => {
@@ -28,7 +30,7 @@ const DistributorView = ({ products, web3, accounts, handleCreateDistributor }) 
 
     const handleSetPrice = async () => {
         if (!selectedProduct) return;
-        console.log("test")
+
         try {
             const feeInWei = web3.utils.toWei(price, 'wei');
             console.log(`Creating distributor for product: ${selectedProduct.address}, fee: ${feeInWei}`);
@@ -36,6 +38,24 @@ const DistributorView = ({ products, web3, accounts, handleCreateDistributor }) 
             handleCloseModal();
         } catch (error) {
             console.error('Error setting price:', error);
+        }
+    };
+
+    const handleSecurityDeposit = async () => {
+        if (!selectedProduct) return;
+
+        try {
+            const productContract = new web3.eth.Contract(ProductABI.abi, selectedProduct.address);
+            const depositAmount = selectedProduct.price; // Assuming price is the required deposit
+            await productContract.methods.securityDeposit().send({
+                from: accounts[0],
+                value: depositAmount,
+            });
+
+            console.log('Security deposit made successfully!');
+            handleCloseModal();
+        } catch (error) {
+            console.error('Error making security deposit:', error);
         }
     };
 
@@ -47,15 +67,6 @@ const DistributorView = ({ products, web3, accounts, handleCreateDistributor }) 
         console.log('Products:', products);
         console.log('Accounts:', accounts);
     }, [products, accounts]);
-
-    useEffect(() => {
-        if (selectedProduct) {
-            console.log('Selected Product:', selectedProduct);
-            setShowModal(true);
-        }
-    }, [selectedProduct]);
-
-    const inProgressProducts = products.filter(product => product.transporter === accounts[0]);
 
     return (
         <div className="distributor-view">
@@ -71,7 +82,7 @@ const DistributorView = ({ products, web3, accounts, handleCreateDistributor }) 
                             products={products}
                             web3={web3}
                             showButton={true}
-                            handleShowDistributors={handleOpenModal}
+                            handleShowDistributors={handleOpenModal} // Opens modal for setting delivery price
                         />
                     </>
                 )}
@@ -79,9 +90,10 @@ const DistributorView = ({ products, web3, accounts, handleCreateDistributor }) 
                     <>
                         <h2>Products In Progress</h2>
                         <ProductList
-                            products={inProgressProducts}
+                            products={products} // No filter, display all products
                             web3={web3}
                             showButton={false}
+                            handleShowDistributors={handleOpenModal} // Reuse the same modal for security deposit
                         />
                     </>
                 )}
@@ -99,23 +111,34 @@ const DistributorView = ({ products, web3, accounts, handleCreateDistributor }) 
                         transform: 'translate(-50%, -50%)',
                     },
                 }}
-                contentLabel="Set Delivery Price"
+                contentLabel="Distributor Modal"
             >
-                <h2>Set Delivery Price</h2>
                 {selectedProduct && (
-                    <div>
-                        <p>Product: {selectedProduct.name}</p>
-                        <p>Owner: {selectedProduct.owner}</p>
-                    </div>
+                    <>
+                        <h2>{tab === 'offers' ? 'Set Delivery Price' : 'Security Deposit'}</h2>
+                        <div>
+                            <p><strong>Product:</strong> {selectedProduct.name}</p>
+                            <p><strong>Owner:</strong> {selectedProduct.owner}</p>
+                            <p><strong>Price:</strong> {web3.utils.fromWei(selectedProduct.price.toString(), 'ether')} ETH</p>
+                            <p><strong>Buyer:</strong> {selectedProduct.buyer || 'Not purchased yet'}</p>
+                            <p><strong>Distributor:</strong> {selectedProduct.transporter || 'Not set'}</p>
+                        </div>
+                        {tab === 'offers' ? (
+                            <>
+                                <input
+                                    type="text"
+                                    value={price}
+                                    onChange={handleInputChange}
+                                    placeholder="Enter delivery price in wei"
+                                />
+                                <button onClick={handleSetPrice}>Set Price</button>
+                            </>
+                        ) : (
+                            <button onClick={handleSecurityDeposit}>Make Security Deposit</button>
+                        )}
+                        <button onClick={handleCloseModal}>Close</button>
+                    </>
                 )}
-                <input
-                    type="text"
-                    value={price}
-                    onChange={handleInputChange}
-                    placeholder="Enter delivery price in wei"
-                />
-                <button onClick={handleSetPrice}>Set Price</button>
-                <button onClick={handleCloseModal}>Close</button>
             </Modal>
         </div>
     );
