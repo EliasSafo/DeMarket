@@ -11,7 +11,7 @@ contract ProductEscrow {
     uint public transporterCount;
     address payable public transporter;
     uint public deliveryFee;
-    uint public securityDeposit;
+    uint public securityDepositAmount; // Renamed from securityDeposit to securityDepositAmount
 
 
     struct TransporterFees {
@@ -36,8 +36,14 @@ contract ProductEscrow {
         _;
     }
 
+    modifier onlyTransporter(){
+        require(msg.sender == transporter, "Only the transporter can call this function");
+        _;
+    }
+
     event ProductPurchased(address buyer, uint price);
     event TransporterCreated(address transporter, uint fee);
+    event TransporterSecurityDeposit(address transporter, uint price);
 
     constructor(string memory _name, uint _price, address _owner) {
         name = _name;
@@ -85,6 +91,12 @@ contract ProductEscrow {
         emit TransporterCreated(msg.sender, _feeInWei);
     }
 
+    function securityDeposit() public payable onlyTransporter transporterSet {
+        require(msg.value >= price, "Transporter needs to deposit an amount equal to the price");
+        securityDepositAmount += msg.value; // Update the securityDepositAmount
+        emit TransporterSecurityDeposit(msg.sender, msg.value);
+    }
+
     function getAllTransporters() public view returns (address[] memory, uint[] memory) {
         uint[] memory fees = new uint[](transporterAddresses.length);
         for (uint i = 0; i < transporterAddresses.length; i++) {
@@ -94,8 +106,3 @@ contract ProductEscrow {
         return (transporterAddresses, fees);
     }
 }
-
-//confirmorder onlyseller
-
-
-//fix filtering
