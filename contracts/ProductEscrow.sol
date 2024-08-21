@@ -44,6 +44,7 @@ contract ProductEscrow {
     event ProductPurchased(address buyer, uint price);
     event TransporterCreated(address transporter, uint fee);
     event TransporterSecurityDeposit(address transporter, uint price);
+    event DeliveryConfirmed(address buyer, address transporter, uint price);
 
     constructor(string memory _name, uint _price, address _owner) {
         name = _name;
@@ -52,6 +53,14 @@ contract ProductEscrow {
         purchased = false;
         buyer = payable(address(0));
     }
+
+    function confirmDelivery() public onlyBuyer transporterSet {
+        owner.transfer(price);
+        transporter.transfer(securityDepositAmount + deliveryFee);
+        owner = buyer;
+        emit DeliveryConfirmed(buyer, transporter, price); // Emit an event to notify the transporter
+    }
+
 
     function depositPurchase() public payable {
         require(!purchased, "Product already purchased");
@@ -63,11 +72,7 @@ contract ProductEscrow {
         emit ProductPurchased(msg.sender, price);
     }
 
-    function withdrawProductPrice() public onlyBuyer transporterSet {
-        require(purchased, "Product not yet purchased");
-        owner.transfer(price);
-        owner = buyer;
-    }
+
 
     function setTransporter(address payable _transporter) external payable onlySeller {
         require(msg.value == transporters[_transporter].fee, "Seller needs to deposit delivery fee");

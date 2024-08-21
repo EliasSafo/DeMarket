@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import Modal from 'react-modal';
 import ProductList from '../ProductList/ProductList';
 import './DistributorView.css'; // Ensure you create and import a CSS file for styling
-import ProductABI from '../../abis/ProductEscrow.json';
+import ProductABI from '../../abis/ProductEscrow.json'; // Import the ProductABI from the correct path
 
 Modal.setAppElement('#root');
 
-const DistributorView = ({ products, web3, accounts, handleCreateDistributor }) => {
+const DistributorView = ({ products, setProducts, web3, accounts, handleCreateDistributor }) => {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [price, setPrice] = useState('');
@@ -53,6 +53,16 @@ const DistributorView = ({ products, web3, accounts, handleCreateDistributor }) 
             });
 
             console.log('Security deposit made successfully!');
+
+            // Move the product to the "Delivering" tab by updating the products state
+            const updatedProducts = products.map(product =>
+                product.address === selectedProduct.address
+                    ? { ...product, status: 'delivering' }
+                    : product
+            );
+
+            setProducts(updatedProducts);
+
             handleCloseModal();
         } catch (error) {
             console.error('Error making security deposit:', error);
@@ -68,11 +78,14 @@ const DistributorView = ({ products, web3, accounts, handleCreateDistributor }) 
         console.log('Accounts:', accounts);
     }, [products, accounts]);
 
+    const deliveringProducts = products.filter(product => product.status === 'delivering');
+
     return (
         <div className="distributor-view">
             <div className="tabs">
                 <button className={tab === 'offers' ? 'active' : ''} onClick={() => handleTabChange('offers')}>Offers</button>
                 <button className={tab === 'inProgress' ? 'active' : ''} onClick={() => handleTabChange('inProgress')}>In Progress</button>
+                <button className={tab === 'delivering' ? 'active' : ''} onClick={() => handleTabChange('delivering')}>Delivering</button>
             </div>
             <div className="content">
                 {tab === 'offers' && (
@@ -90,10 +103,21 @@ const DistributorView = ({ products, web3, accounts, handleCreateDistributor }) 
                     <>
                         <h2>Products In Progress</h2>
                         <ProductList
-                            products={products} // No filter, display all products
+                            products={products.filter(product => product.status !== 'delivering')} // Display products not yet delivering
                             web3={web3}
                             showButton={false}
                             handleShowDistributors={handleOpenModal} // Reuse the same modal for security deposit
+                        />
+                    </>
+                )}
+                {tab === 'delivering' && (
+                    <>
+                        <h2>Products Being Delivered</h2>
+                        <ProductList
+                            products={deliveringProducts} // Display products that are currently being delivered
+                            web3={web3}
+                            showButton={false}
+                            handleShowDistributors={handleOpenModal} // Reuse the same modal for additional info if needed
                         />
                     </>
                 )}

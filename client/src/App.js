@@ -17,7 +17,7 @@ const App = () => {
   const [error, setError] = useState(null);
   const [tabIndex, setTabIndex] = useState(0); // State to handle the selected tab
 
-  const factoryAddress = '0x886A5b742644731CB533C17C5fC44afaF22D0157'; // Replace with your factory contract address
+  const factoryAddress = '0x0580831486a96b308832bfA897d6d3D6f38b3C69'; // Replace with your factory contract address
 
   const fetchProducts = async (factoryContract, web3Instance) => {
     try {
@@ -221,6 +221,7 @@ const App = () => {
           <div label="DISTRIBUTOR">
             <DistributorView
                 products={products}
+                setProducts={setProducts} // Pass setProducts to DistributorView
                 web3={web3}
                 accounts={accounts} // Pass accounts to DistributorView
                 handleCreateDistributor={handleCreateDistributor}
