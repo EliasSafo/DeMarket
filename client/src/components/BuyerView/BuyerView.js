@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import ProductList from '../ProductList/ProductList';
 import Modal from 'react-modal';
 import ProductABI from '../../abis/ProductEscrow.json'; // Import ProductABI
+import axios from 'axios';
 
-const BuyerView = ({ products, web3, handleBuyProduct, accounts }) => {
+const BuyerView = ({ products, web3, accounts }) => {
     const [tab, setTab] = useState('sale');
     const [search, setSearch] = useState('');
     const [selectedProduct, setSelectedProduct] = useState(null);
@@ -15,6 +16,53 @@ const BuyerView = ({ products, web3, handleBuyProduct, accounts }) => {
 
     const handleSearchChange = (e) => {
         setSearch(e.target.value);
+    };
+
+    const downloadFileFromPinata = async (cid) => {
+        try {
+            const url = `https://plum-eligible-puma-63.mypinata.cloud/ipfs/${cid}`;
+            const response = await axios.get(url, {
+                responseType: 'json', // Expect JSON data
+            });
+
+            // Create a link element to download the file as JSON
+            const urlBlob = window.URL.createObjectURL(new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' }));
+            const link = document.createElement('a');
+            link.href = urlBlob;
+            link.setAttribute('download', 'verifiable-credentials.json'); // Name of the downloaded file
+            document.body.appendChild(link);
+            link.click();
+
+            // Clean up the link after download
+            link.parentNode.removeChild(link);
+
+        } catch (error) {
+            console.error('Error downloading file from Pinata:', error);
+        }
+    };
+
+    const handleBuyProductWithDownload = async (productAddress, productPrice) => {
+        try {
+            console.log("Attempting to purchase product...");
+            const productContract = new web3.eth.Contract(ProductABI.abi, productAddress);
+
+            await productContract.methods.depositPurchase().send({
+                from: accounts[0],
+                value: productPrice,
+            });
+
+            console.log('Product purchased successfully!');
+
+            // Retrieve the CID from the smart contract
+            const cid = await productContract.methods.getCid().call();
+            console.log('Retrieved CID:', cid);
+
+            // Download the file from Pinata using the CID
+            await downloadFileFromPinata(cid);
+
+        } catch (error) {
+            console.error('Error purchasing product and downloading VC:', error);
+        }
     };
 
     const handleConfirmDelivery = (product) => {
@@ -63,7 +111,7 @@ const BuyerView = ({ products, web3, handleBuyProduct, accounts }) => {
                             products={products} // Show all products
                             web3={web3}
                             showButton={true}
-                            handleBuyProduct={handleBuyProduct}
+                            handleBuyProduct={handleBuyProductWithDownload} // Use the new handleBuyProductWithDownload function
                         />
                     )}
                     {tab === 'inProgress' && (

@@ -17,7 +17,7 @@ const App = () => {
   const [error, setError] = useState(null);
   const [tabIndex, setTabIndex] = useState(0); // State to handle the selected tab
 
-  const factoryAddress = '0x0580831486a96b308832bfA897d6d3D6f38b3C69'; // Replace with your factory contract address
+  const factoryAddress = '0xe149E6c0eeFf44FCbB916e64818dc028842F147F'; // Replace with your factory contract address
 
   const fetchProducts = async (factoryContract, web3Instance) => {
     try {
@@ -103,28 +103,25 @@ const App = () => {
     init();
   }, []);
 
-  const handleAddProduct = async (productName, productPrice) => {
+  const handleAddProduct = async (productName, productPrice, vcCID) => {
     if (!web3 || !accounts || !factoryContract) {
       setError('Web3, accounts, or contract not loaded properly.');
       return;
     }
 
-    if (!productName || !productPrice) {
+    if (!productName || !productPrice || !vcCID) {
       setError('All fields are required');
       return;
     }
 
     try {
       const priceInWei = web3.utils.toWei(productPrice, 'ether');
-      console.log(`Adding product with name: ${productName}, price: ${priceInWei}`);
+      console.log(`Adding product with name: ${productName}, price: ${priceInWei}, CID: ${vcCID}`);
 
       const gasPrice = web3.utils.toWei('2', 'gwei');
-      const gasLimit = 2000000; // Adjust if necessary
+      const gasLimit = 2000000;
 
-      console.log('Gas Price:', gasPrice);
-      console.log('Gas Limit:', gasLimit);
-
-      const tx = await factoryContract.methods.createProduct(productName, priceInWei).send({
+      const tx = await factoryContract.methods.createProduct(productName, priceInWei, vcCID).send({
         from: accounts[0],
         gasPrice: gasPrice,
         gas: gasLimit,
@@ -135,7 +132,6 @@ const App = () => {
       await fetchProducts(factoryContract, web3);
     } catch (error) {
       console.error('Error adding product:', error);
-      console.error('Error details:', error.response ? error.response : error.message);
       setError('Failed to add product. Check console for details.');
     }
   };

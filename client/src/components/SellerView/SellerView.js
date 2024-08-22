@@ -4,25 +4,73 @@ import ProductList from '../ProductList/ProductList';
 import DistributorInfo from '../DistributorInfo/DistributorInfo';
 import { getTransporters } from '../../utils/web3Utils';
 import Modal from 'react-modal';
+import axios from 'axios';
+import FormData from 'form-data';
 
 Modal.setAppElement('#root'); // This is important for accessibility, replace #root with your app element if different
 
 const SellerView = ({ products, setProducts, handleAddProduct, web3, contractAbi, accounts }) => {
     const [productName, setProductName] = useState('');
     const [productPrice, setProductPrice] = useState('');
+    const [selectedFile, setSelectedFile] = useState(null); // New state for file upload
+    const [uploading, setUploading] = useState(false);
     const [tab, setTab] = useState('newProduct');
-    const [distributors, setDistributors] = useState([[], []]); // Ensure it starts as an empty array structure
+    const [distributors, setDistributors] = useState([[], []]);
     const [showDistributors, setShowDistributors] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
+
+    const JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiI2NDE3ZDNmYy03NWZhLTRhMWEtYTkxMi00ODRiYTQ2MzM0MGYiLCJlbWFpbCI6ImVsaWFzc2Fmb0BnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJpZCI6IkZSQTEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX0seyJpZCI6Ik5ZQzEiLCJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MX1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiMjgxODJkMjdiY2JiN2I3ZTRjMGYiLCJzY29wZWRLZXlTZWNyZXQiOiI0ODRlYWI4YjJmOWE5MDMyMmI5Yjg5MWIwMDczYmNiM2YyNzYzODgxNmI3NGRiNTcwNGEyMDBlYTdjZmZkODdiIiwiaWF0IjoxNzI0MzUwMjQxfQ.nrCVTq19me0qvSbJnwswJQ9th1PTvWLjyfT8_CduB8Y'; // Replace with your actual JWT
 
     const handleTabChange = (newTab) => {
         setTab(newTab);
     };
 
-    const addProduct = () => {
-        handleAddProduct(productName, productPrice);
-        setProductName('');
-        setProductPrice('');
+    const handleFileChange = (e) => {
+        setSelectedFile(e.target.files[0]);
+    };
+
+    const pinFileToIPFS = async () => {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        const pinataMetadata = JSON.stringify({ name: productName });
+        formData.append('pinataMetadata', pinataMetadata);
+
+        const pinataOptions = JSON.stringify({ cidVersion: 0 });
+        formData.append('pinataOptions', pinataOptions);
+
+        try {
+            setUploading(true);
+            const res = await axios.post("https://api.pinata.cloud/pinning/pinFileToIPFS", formData, {
+                maxBodyLength: "Infinity",
+                headers: {
+                    'Content-Type': `multipart/form-data; boundary=${formData._boundary}`,
+                    'Authorization': `Bearer ${JWT}`
+                }
+            });
+            console.log('IPFS Hash:', res.data.IpfsHash);
+            setUploading(false);
+            return res.data.IpfsHash;
+        } catch (error) {
+            console.error('Error uploading file to IPFS:', error);
+            setUploading(false);
+            return null;
+        }
+    };
+
+    const addProduct = async () => {
+        if (!productName || !productPrice || !selectedFile) {
+            alert('Please fill in all fields and upload a file.');
+            return;
+        }
+
+        const cid = await pinFileToIPFS();
+        if (cid) {
+            handleAddProduct(productName, productPrice, cid);
+            setProductName('');
+            setProductPrice('');
+            setSelectedFile(null);
+        }
     };
 
     const handleShowDistributors = async (product) => {
@@ -51,10 +99,8 @@ const SellerView = ({ products, setProducts, handleAddProduct, web3, contractAbi
 
             console.log('Transporter set successfully!');
 
-            // Update the selectedProduct state to reflect the new transporter
             setSelectedProduct(prevState => ({ ...prevState, transporter: transporterAddress }));
 
-            // Update the products array to reflect the new transporter
             const updatedProducts = products.map(product =>
                 product.address === selectedProduct.address ? { ...product, transporter: transporterAddress } : product
             );
@@ -62,7 +108,7 @@ const SellerView = ({ products, setProducts, handleAddProduct, web3, contractAbi
             setProducts(updatedProducts);
 
             setShowDistributors(false);
-            setDistributors([[], []]); // Reset to empty array structure
+            setDistributors([[], []]);
             setSelectedProduct(null);
 
         } catch (error) {
@@ -86,7 +132,9 @@ const SellerView = ({ products, setProducts, handleAddProduct, web3, contractAbi
                                 setProductName={setProductName}
                                 productPrice={productPrice}
                                 setProductPrice={setProductPrice}
+                                handleFileChange={handleFileChange} // Pass file change handler
                                 handleAddProduct={addProduct}
+                                uploading={uploading} // Pass uploading state
                             />
                             <ProductList
                                 products={products}
