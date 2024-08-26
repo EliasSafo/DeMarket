@@ -123,7 +123,11 @@ const SellerView = ({ products, setProducts, handleAddProduct, web3, contractAbi
                 onClose={handleCloseDistributors}
                 isOpen={showDistributors}
                 onSelectTransporter={handleSelectTransporter}
+                web3={web3} // Ensure web3 is passed here
+                contractAbi={contractAbi}
+                accounts={accounts}
             />
+
         </div>
     );
 };

@@ -19,6 +19,12 @@ const ProductList = ({ products, web3, showButton, handleBuyProduct, handleShowD
               <p>Price: {web3.utils.fromWei(product.price.toString(), 'ether')} ETH</p>
               <p>Owner: {product.owner}</p>
               <p>Purchased: {product.purchased ? 'Yes' : 'No'}</p>
+              {product.vcCID && (
+                  <div>
+                    <strong>VC CID:</strong>
+                    <p>{product.vcCID}</p>
+                  </div>
+              )}
               {showButton && handleBuyProduct && (
                   <button onClick={() => handleBuyProduct(product.address, product.price)}>Buy</button>
               )}
