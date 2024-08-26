@@ -17,7 +17,7 @@ const App = () => {
   const [error, setError] = useState(null);
   const [tabIndex, setTabIndex] = useState(0); // State to handle the selected tab
 
-  const factoryAddress = '0x886A5b742644731CB533C17C5fC44afaF22D0157'; // Replace with your factory contract address
+  const factoryAddress = '0xa4FC5a9e965B917D876Bd9DC637C9c8F351EF9cd'; // Replace with your factory contract address
 
   const fetchProducts = async (factoryContract, web3Instance) => {
     try {
@@ -32,6 +32,7 @@ const App = () => {
         const purchased = await productContract.methods.purchased().call();
         const buyer = await productContract.methods.buyer().call(); // Fetch buyer
         const transporter = await productContract.methods.transporter().call(); // Fetch transporter
+
 
         productsArray.push({
           address,
@@ -51,6 +52,7 @@ const App = () => {
       setError('Failed to fetch products. Check console for details.');
     }
   };
+
 
   useEffect(() => {
     const init = async () => {
@@ -127,7 +129,6 @@ const App = () => {
       const tx = await factoryContract.methods.createProduct(productName, priceInWei).send({
         from: accounts[0],
         gasPrice: gasPrice,
-        gas: gasLimit,
       });
 
       console.log('Transaction:', tx);
@@ -187,10 +188,6 @@ const App = () => {
     }
   };
 
-  const handleChangeTab = (event, newValue) => {
-    setTabIndex(newValue);
-  };
-
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -203,27 +200,27 @@ const App = () => {
           <div label="SELLER">
             <SellerView
                 products={products}
-                setProducts={setProducts} // Pass setProducts to SellerView
+                setProducts={setProducts}
                 handleAddProduct={handleAddProduct}
                 web3={web3}
-                contractAbi={ProductABI.abi} // Pass the contract ABI
-                accounts={accounts} // Pass accounts to SellerView
+                contractAbi={ProductABI.abi}
+                accounts={accounts}
             />
           </div>
           <div label="BUYER">
             <BuyerView
                 products={products}
                 web3={web3}
-                handleBuyProduct={handleBuyProduct}
                 accounts={accounts}
+                handleBuyProduct={handleBuyProduct} // Pass the handleBuyProduct function
             />
+
           </div>
           <div label="DISTRIBUTOR">
             <DistributorView
                 products={products}
                 web3={web3}
-                accounts={accounts} // Pass accounts to DistributorView
-                handleCreateDistributor={handleCreateDistributor}
+                accounts={accounts}
             />
           </div>
         </BasicTabs>
