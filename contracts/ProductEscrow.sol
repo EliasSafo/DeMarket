@@ -11,15 +11,14 @@ contract ProductEscrow {
     uint public transporterCount;
     address payable public transporter;
     uint public deliveryFee;
-    uint public securityDepositAmount; // Renamed from securityDeposit to securityDepositAmount
-
+    uint public securityDepositAmount;
 
     struct TransporterFees {
         uint fee;
     }
 
-    mapping(address => TransporterFees) public transporters; // Mapping with transporter address as key
-    address[] public transporterAddresses; // Array to store transporter addresses
+    mapping(address => TransporterFees) public transporters;
+    address[] public transporterAddresses;
 
     modifier onlyBuyer() {
         require(msg.sender == buyer, "Only the buyer can call this function");
@@ -41,16 +40,29 @@ contract ProductEscrow {
         _;
     }
 
-    event ProductPurchased(address buyer, uint price);
+    event OrderConfirmed(address indexed buyer, uint indexed price, string vcCID);
     event TransporterCreated(address transporter, uint fee);
     event TransporterSecurityDeposit(address transporter, uint price);
+    event DeliveryConfirmed(address indexed buyer, address indexed transporter, uint price);
+    event CancelDelivery(address indexed seller, address indexed transporter, uint buyerRefund);
 
     constructor(string memory _name, uint _price, address _owner) {
         name = _name;
-        price = _price; // Price is expected to be in wei
+        price = _price;
         owner = payable(_owner);
         purchased = false;
         buyer = payable(address(0));
+    }
+
+    function confirmDelivery() public onlyBuyer transporterSet {
+        owner.transfer(price);
+        transporter.transfer(securityDepositAmount + deliveryFee);
+        owner = buyer;
+        emit DeliveryConfirmed(buyer, transporter, price);
+    }
+
+    function confirmOrder(string memory vcCID) public onlySeller {
+        emit OrderConfirmed(buyer, price, vcCID);
     }
 
     function depositPurchase() public payable {
@@ -60,13 +72,21 @@ contract ProductEscrow {
 
         buyer = payable(msg.sender);
         purchased = true;
-        emit ProductPurchased(msg.sender, price);
     }
 
     function withdrawProductPrice() public onlyBuyer transporterSet {
         require(purchased, "Product not yet purchased");
         owner.transfer(price);
+        transporter.transfer(price + deliveryFee);
         owner = buyer;
+    }
+
+    function cancelDelivery() public onlySeller transporterSet {
+        require(purchased, "Product not yet purchased");
+        transporter.transfer((2 * price) / 10 + deliveryFee + price); // Equivalent to 0.2 * price + deliveryFee + price
+        owner.transfer(price / 10); // Equivalent to 0.1 * price
+        buyer.transfer((7 * price) / 10); // Equivalent to 0.7 * price
+        emit CancelDelivery(msg.sender, transporter, (7 * price) / 10); // Emit the CancelDelivery event
     }
 
     function setTransporter(address payable _transporter) external payable onlySeller {
@@ -80,12 +100,9 @@ contract ProductEscrow {
     function createTransporter(uint _feeInEther) public {
         require(transporters[msg.sender].fee == 0, "Transporter already exists");
 
-        // Convert fee from ether to wei
         uint _feeInWei = _feeInEther * 1 ether;
 
-        transporters[msg.sender] = TransporterFees({
-            fee: _feeInWei
-        });
+        transporters[msg.sender] = TransporterFees({ fee: _feeInWei });
         transporterAddresses.push(msg.sender);
         transporterCount++;
         emit TransporterCreated(msg.sender, _feeInWei);
@@ -93,7 +110,7 @@ contract ProductEscrow {
 
     function securityDeposit() public payable onlyTransporter transporterSet {
         require(msg.value >= price, "Transporter needs to deposit an amount equal to the price");
-        securityDepositAmount += msg.value; // Update the securityDepositAmount
+        securityDepositAmount += msg.value;
         emit TransporterSecurityDeposit(msg.sender, msg.value);
     }
 

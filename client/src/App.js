@@ -17,7 +17,7 @@ const App = () => {
   const [error, setError] = useState(null);
   const [tabIndex, setTabIndex] = useState(0); // State to handle the selected tab
 
-  const factoryAddress = '0xa4FC5a9e965B917D876Bd9DC637C9c8F351EF9cd'; // Replace with your factory contract address
+  const factoryAddress = '0x05C65cc3401ce46B37455afd9A7bdA4c93D32B75'; // Replace with your factory contract address
 
   const fetchProducts = async (factoryContract, web3Instance) => {
     try {
