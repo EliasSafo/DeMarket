@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import ProductList from '../ProductList/ProductList';
-import ProductABI from '../../abis/ProductEscrow.json'
+import ProductABI from '../../abis/ProductEscrow.json';
+
 const BuyerView = ({ products, web3, accounts, handleBuyProduct }) => {
     const [tab, setTab] = useState('sale');
     const [search, setSearch] = useState('');
-    const [vcList, setVcList] = useState([]);  // Initialize vcList state
+    const [vcList, setVcList] = useState([]);
 
     const handleTabChange = (newTab) => {
         setTab(newTab);
@@ -45,6 +46,20 @@ const BuyerView = ({ products, web3, accounts, handleBuyProduct }) => {
         }
     }, [tab]);
 
+    const handleConfirmDelivery = async (productAddress) => {
+        try {
+            const productContract = new web3.eth.Contract(ProductABI.abi, productAddress);
+            await productContract.methods.confirmDelivery().send({
+                from: accounts[0],
+            });
+
+            console.log('Delivery confirmed successfully!');
+            // Optionally refresh the product list or update the state to reflect the change
+        } catch (error) {
+            console.error('Error confirming delivery:', error);
+        }
+    };
+
     const filteredProducts = search
         ? products.filter(product =>
             product.name.toLowerCase().includes(search.toLowerCase())
@@ -81,6 +96,8 @@ const BuyerView = ({ products, web3, accounts, handleBuyProduct }) => {
                             products={filteredProducts}
                             web3={web3}
                             showButton={false}
+                            handleBuyProduct={undefined}
+                            handleConfirmDelivery={handleConfirmDelivery} // Correctly passed
                         />
                     )}
                     {tab === 'vcs' && (

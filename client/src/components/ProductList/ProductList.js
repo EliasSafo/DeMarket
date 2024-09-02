@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ProductList = ({ products, web3, showButton, handleBuyProduct, handleShowDistributors }) => {
+const ProductList = ({ products, web3, showButton, handleBuyProduct, handleShowDistributors, handleConfirmDelivery }) => {
   if (!web3 || !web3.utils) {
     console.error('Web3 is not initialized or missing utils');
     return null;
@@ -30,6 +30,9 @@ const ProductList = ({ products, web3, showButton, handleBuyProduct, handleShowD
               )}
               {handleShowDistributors && (
                   <button onClick={() => handleShowDistributors(product)}>Info</button>
+              )}
+              {handleConfirmDelivery && product.purchased && (
+                  <button onClick={() => handleConfirmDelivery(product.address)}>Confirm Delivery</button>
               )}
             </div>
         ))}

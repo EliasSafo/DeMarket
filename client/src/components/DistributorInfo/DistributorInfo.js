@@ -22,7 +22,7 @@ const DistributorInfo = ({ selectedProduct, distributors, onClose, isOpen, onSel
     const addresses = distributors[0] || [];
     const fees = distributors[1] || [];
 
-    const JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiI2NDE3ZDNmYy03NWZhLTRhMWEtYTkxMi00ODRiYTQ2MzM0MGYiLCJlbWFpbCI6ImVsaWFzc2Fmb0BnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJGUkExIn0seyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJOWUMxIn1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiMDNlOWI0MzJkZWUxMTg5N2ZjNzEiLCJzY29wZWRLZXlTZWNyZXQiOiJjMTE5NzY3Y2UwZjdkZTk1OWQ0YTUyOGNiMTMzZmYzOWEzYzI1YjhkZGQ3OTE1NzMzNDhhNmYzZTlkZWJiOGZjIiwiZXhwIjoxNzU2MTQwMjc2fQ.H2wlHYkrZxmyQHJ13InrZ0ia7i8x8-q8Crkt44yrVuk'; // Replace with your actual JWT
+    const JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiI2NDE3ZDNmYy03NWZhLTRhMWEtYTkxMi00ODRiYTQ2MzM0MGYiLCJlbWFpbCI6ImVsaWFzc2Fmb0BnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJGUkExIn0seyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJOWUMxIn1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiYjgyYmIwODY3NDhjN2M5NGM4NTIiLCJzY29wZWRLZXlTZWNyZXQiOiI5NDZlOGI3MGZiYjJlOWUxM2Q4NmNmMDBlZTlkNGExMmUzOTQ4N2Y5ODgxYzk4NjM2YWJhMzczOGEyYzM5OGVhIiwiZXhwIjoxNzU2MzY1NjM2fQ.5g-GOhjyL9OtRPKko3rt73c8WJud9N_5Fd50xaFlOOg';
 
     const handleFileChange = (e) => {
         setSelectedFile(e.target.files[0]);
@@ -84,6 +84,26 @@ const DistributorInfo = ({ selectedProduct, distributors, onClose, isOpen, onSel
         }
     };
 
+    const handleCancelDelivery = async () => {
+        console.log('Canceling delivery for product:', selectedProduct);
+
+        if (!selectedProduct || !web3 || !accounts || !contractAbi) {
+            alert('Please ensure a product is selected and that web3 is properly initialized.');
+            return;
+        }
+
+        try {
+            const productContract = new web3.eth.Contract(contractAbi, selectedProduct.address);
+            await productContract.methods.cancelDelivery().send({
+                from: accounts[0],
+            });
+
+            console.log('Delivery canceled successfully!');
+            onClose();
+        } catch (error) {
+            console.error('Error canceling delivery:', error);
+        }
+    };
 
     const handleSelectTransporter = (address, fee) => {
         onSelectTransporter(address, fee);
@@ -132,6 +152,11 @@ const DistributorInfo = ({ selectedProduct, distributors, onClose, isOpen, onSel
                             <input type="file" onChange={handleFileChange} />
                             <button onClick={handleConfirmOrder} disabled={uploading}>
                                 {uploading ? 'Uploading...' : 'Confirm Order'}
+                            </button>
+                        </div>
+                        <div>
+                            <button onClick={handleCancelDelivery} style={{ backgroundColor: 'red', color: 'white' }}>
+                                Cancel Delivery
                             </button>
                         </div>
                     </>

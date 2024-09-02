@@ -17,7 +17,7 @@ const App = () => {
   const [error, setError] = useState(null);
   const [tabIndex, setTabIndex] = useState(0); // State to handle the selected tab
 
-  const factoryAddress = '0x05C65cc3401ce46B37455afd9A7bdA4c93D32B75'; // Replace with your factory contract address
+  const factoryAddress = '0xCF70bC0B3ef6f0d20940EC61B529631b3fac2845'; // Replace with your factory contract address
 
   const fetchProducts = async (factoryContract, web3Instance) => {
     try {
@@ -32,7 +32,6 @@ const App = () => {
         const purchased = await productContract.methods.purchased().call();
         const buyer = await productContract.methods.buyer().call(); // Fetch buyer
         const transporter = await productContract.methods.transporter().call(); // Fetch transporter
-
 
         productsArray.push({
           address,
@@ -52,7 +51,6 @@ const App = () => {
       setError('Failed to fetch products. Check console for details.');
     }
   };
-
 
   useEffect(() => {
     const init = async () => {
@@ -214,13 +212,13 @@ const App = () => {
                 accounts={accounts}
                 handleBuyProduct={handleBuyProduct} // Pass the handleBuyProduct function
             />
-
           </div>
           <div label="DISTRIBUTOR">
             <DistributorView
                 products={products}
                 web3={web3}
                 accounts={accounts}
+                handleCreateDistributor={handleCreateDistributor} // Pass the handleCreateDistributor function here
             />
           </div>
         </BasicTabs>
