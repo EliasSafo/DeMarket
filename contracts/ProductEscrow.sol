@@ -12,6 +12,7 @@ contract ProductEscrow {
     address payable public transporter;
     uint public deliveryFee;
     uint public securityDepositAmount;
+    uint public purchaseTimestamp; // Timestamp when purchase is confirmed
 
     struct TransporterFees {
         uint fee;
@@ -35,7 +36,7 @@ contract ProductEscrow {
         _;
     }
 
-    modifier onlyTransporter(){
+    modifier onlyTransporter() {
         require(msg.sender == transporter, "Only the transporter can call this function");
         _;
     }
@@ -45,6 +46,7 @@ contract ProductEscrow {
     event TransporterSecurityDeposit(address transporter, uint price);
     event DeliveryConfirmed(address indexed buyer, address indexed transporter, uint price);
     event CancelDelivery(address indexed seller, address indexed transporter, uint buyerRefund);
+    event ProductDeleted(uint productId, string productName);
 
     constructor(string memory _name, uint _price, address _owner) {
         name = _name;
@@ -55,6 +57,7 @@ contract ProductEscrow {
     }
 
     function confirmDelivery() public onlyBuyer transporterSet {
+        require(block.timestamp <= purchaseTimestamp + 2 days, "Delivery confirmation period expired");
         owner.transfer(price);
         transporter.transfer(securityDepositAmount + deliveryFee);
         owner = buyer;
@@ -62,6 +65,8 @@ contract ProductEscrow {
     }
 
     function confirmOrder(string memory vcCID) public onlySeller {
+        require(purchased, "Product not yet purchased");
+        purchaseTimestamp = block.timestamp; // Extend the timer by resetting the timestamp
         emit OrderConfirmed(buyer, price, vcCID);
     }
 
@@ -72,6 +77,7 @@ contract ProductEscrow {
 
         buyer = payable(msg.sender);
         purchased = true;
+        purchaseTimestamp = block.timestamp; // Start the timer
     }
 
     function withdrawProductPrice() public onlyBuyer transporterSet {
@@ -121,5 +127,28 @@ contract ProductEscrow {
             fees[i] = transporters[transporterAddress].fee;
         }
         return (transporterAddresses, fees);
+    }
+
+    function checkAndDeleteProduct() public {
+        require(purchased, "Product not yet purchased");
+        require(block.timestamp >= purchaseTimestamp + 2 days, "Product deletion period not reached");
+
+        emit ProductDeleted(id, name);
+        deleteProduct(); // Custom logic to delete the product from storage
+    }
+
+    function deleteProduct() internal {
+        // Logic to mark product as deleted or reset its state
+        delete name;
+        delete price;
+        delete owner;
+        delete purchased;
+        delete buyer;
+        delete transporter;
+        delete deliveryFee;
+        delete securityDepositAmount;
+        delete purchaseTimestamp;
+        delete transporterCount;
+        // Further deletion logic as required
     }
 }
