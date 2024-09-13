@@ -44,7 +44,7 @@ contract ProductEscrow {
     event OrderConfirmed(address indexed buyer, uint indexed price, string vcCID);
     event TransporterCreated(address transporter, uint fee);
     event TransporterSecurityDeposit(address transporter, uint price);
-    event DeliveryConfirmed(address indexed buyer, address indexed transporter, uint price);
+    event DeliveryConfirmed(address indexed buyer, address indexed transporter, uint price, string vcCID);
     event CancelDelivery(address indexed seller, address indexed transporter, uint buyerRefund);
     event ProductDeleted(uint productId, string productName);
 
@@ -56,12 +56,12 @@ contract ProductEscrow {
         buyer = payable(address(0));
     }
 
-    function confirmDelivery() public onlyBuyer transporterSet {
+    function confirmDelivery(string memory vcCID) public onlyBuyer transporterSet {
         require(block.timestamp <= purchaseTimestamp + 2 days, "Delivery confirmation period expired");
         owner.transfer(price);
         transporter.transfer(securityDepositAmount + deliveryFee);
         owner = buyer;
-        emit DeliveryConfirmed(buyer, transporter, price);
+        emit DeliveryConfirmed(buyer, transporter, price,vcCID);
     }
 
     function confirmOrder(string memory vcCID) public onlySeller {

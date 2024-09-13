@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import ProductList from '../ProductList/ProductList';
 import ProductABI from '../../abis/ProductEscrow.json';
 
@@ -6,6 +7,8 @@ const BuyerView = ({ products, web3, accounts, handleBuyProduct }) => {
     const [tab, setTab] = useState('sale');
     const [search, setSearch] = useState('');
     const [vcList, setVcList] = useState([]);
+    const [uploading, setUploading] = useState(false);
+    const [isConfirmingDelivery, setIsConfirmingDelivery] = useState(false); // Add this state
 
     const handleTabChange = (newTab) => {
         setTab(newTab);
@@ -46,17 +49,69 @@ const BuyerView = ({ products, web3, accounts, handleBuyProduct }) => {
         }
     }, [tab]);
 
+    const pinFileToIPFS = async () => {
+        const dummyData = {
+            productName: "Sample Product",
+            deliveryDate: new Date().toISOString(),
+            buyer: accounts[0],
+            message: "This is a dummy VC file."
+        };
+        const JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiI2NDE3ZDNmYy03NWZhLTRhMWEtYTkxMi00ODRiYTQ2MzM0MGYiLCJlbWFpbCI6ImVsaWFzc2Fmb0BnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJGUkExIn0seyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJOWUMxIn1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiYjgyYmIwODY3NDhjN2M5NGM4NTIiLCJzY29wZWRLZXlTZWNyZXQiOiI5NDZlOGI3MGZiYjJlOWUxM2Q4NmNmMDBlZTlkNGExMmUzOTQ4N2Y5ODgxYzk4NjM2YWJhMzczOGEyYzM5OGVhIiwiZXhwIjoxNzU2MzY1NjM2fQ.5g-GOhjyL9OtRPKko3rt73c8WJud9N_5Fd50xaFlOOg';
+
+
+        const blob = new Blob([JSON.stringify(dummyData, null, 2)], { type: 'application/json' });
+        const dummyFile = new File([blob], "dummyVC.json");
+
+        const formData = new FormData();
+        formData.append('file', dummyFile);
+
+        const pinataMetadata = JSON.stringify({ name: "Dummy Verifiable Credential" });
+        formData.append('pinataMetadata', pinataMetadata);
+
+        const pinataOptions = JSON.stringify({ cidVersion: 0 });
+        formData.append('pinataOptions', pinataOptions);
+
+        try {
+            setUploading(true);
+            const res = await axios.post("https://api.pinata.cloud/pinning/pinFileToIPFS", formData, {
+                maxBodyLength: "Infinity",
+                headers: {
+                    'Content-Type': `multipart/form-data; boundary=${formData._boundary}`,
+                    'Authorization': `Bearer ${JWT}`
+                }
+            });
+            console.log('IPFS Hash:', res.data.IpfsHash);
+            setUploading(false);
+            return res.data.IpfsHash;
+        } catch (error) {
+            console.error('Error uploading file to IPFS:', error);
+            setUploading(false);
+            return null;
+        }
+    };
+
     const handleConfirmDelivery = async (productAddress) => {
+        if (isConfirmingDelivery) return; // Prevent multiple triggers
+        setIsConfirmingDelivery(true); // Set the confirming flag
+
+        const vcCID = await pinFileToIPFS();
+        if (!vcCID) {
+            alert("Failed to upload file to IPFS.");
+            setIsConfirmingDelivery(false); // Reset the flag
+            return;
+        }
+
         try {
             const productContract = new web3.eth.Contract(ProductABI.abi, productAddress);
-            await productContract.methods.confirmDelivery().send({
+            await productContract.methods.confirmDelivery(vcCID).send({
                 from: accounts[0],
             });
 
-            console.log('Delivery confirmed successfully!');
-            // Optionally refresh the product list or update the state to reflect the change
+            console.log('Delivery confirmed successfully with VC CID:', vcCID);
         } catch (error) {
             console.error('Error confirming delivery:', error);
+        } finally {
+            setIsConfirmingDelivery(false); // Reset the flag after confirmation
         }
     };
 
@@ -92,13 +147,15 @@ const BuyerView = ({ products, web3, accounts, handleBuyProduct }) => {
                         />
                     )}
                     {tab === 'inProgress' && (
-                        <ProductList
-                            products={filteredProducts}
-                            web3={web3}
-                            showButton={false}
-                            handleBuyProduct={undefined}
-                            handleConfirmDelivery={handleConfirmDelivery} // Correctly passed
-                        />
+                        <>
+                            <ProductList
+                                products={filteredProducts}
+                                web3={web3}
+                                showButton={false}
+                                handleBuyProduct={undefined}
+                                handleConfirmDelivery={handleConfirmDelivery}
+                            />
+                        </>
                     )}
                     {tab === 'vcs' && (
                         <div>

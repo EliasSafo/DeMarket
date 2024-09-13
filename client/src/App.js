@@ -17,7 +17,8 @@ const App = () => {
   const [error, setError] = useState(null);
   const [tabIndex, setTabIndex] = useState(0); // State to handle the selected tab
 
-  const factoryAddress = '0xCF70bC0B3ef6f0d20940EC61B529631b3fac2845'; // Replace with your factory contract address
+  const factoryAddress = '0x6DEEc10f47655C3cE2cAD9DcEA3B3340bFF73736'; // Replace with your factory contract address
+  const sepoliaRpcUrl = "https://infura.io/v3/4d03e43876f4489c9dfd6c6df4ca3f5f";
 
   const fetchProducts = async (factoryContract, web3Instance) => {
     try {
@@ -53,54 +54,60 @@ const App = () => {
   };
 
   useEffect(() => {
-    const init = async () => {
+    const initWeb3 = async () => {
       try {
-        console.log('Attempting to connect to MetaMask...');
+        console.log('Attempting to connect to MetaMask or Sepolia via Infura...');
+        let web3Instance;
+
+        // Check if MetaMask is installed
         if (window.ethereum) {
-          const web3Instance = new Web3(window.ethereum);
+          web3Instance = new Web3(window.ethereum);
           try {
+            // Request MetaMask accounts
             await window.ethereum.request({ method: 'eth_requestAccounts' });
           } catch (error) {
             console.error('User denied account access');
             return;
           }
-          setWeb3(web3Instance);
-
-          const accounts = await web3Instance.eth.getAccounts();
-          if (!accounts || accounts.length === 0) {
-            throw new Error('No accounts found. Ensure MetaMask is connected.');
-          }
-          setAccounts(accounts);
-          console.log('Accounts:', accounts);
-
-          const contractInstance = new web3Instance.eth.Contract(ProductFactoryABI.abi, factoryAddress);
-          setFactoryContract(contractInstance);
-          console.log('Factory contract instance:', contractInstance);
-
-          await fetchProducts(contractInstance, web3Instance);
-
-          window.ethereum.on('accountsChanged', async (newAccounts) => {
-            if (newAccounts.length === 0) {
-              console.error('MetaMask is locked or the user has not connected any accounts');
-              setError('MetaMask is locked or the user has not connected any accounts');
-              setAccounts([]);
-            } else {
-              console.log('Accounts changed:', newAccounts);
-              setAccounts(newAccounts);
-              await fetchProducts(contractInstance, web3Instance);
-            }
-          });
         } else {
-          console.error('MetaMask is not installed');
-          setError('MetaMask is not installed');
+          // If MetaMask is not installed, fall back to Sepolia via Infura
+          web3Instance = new Web3(new Web3.providers.HttpProvider(sepoliaRpcUrl));
+          console.log('Using Infura for Sepolia testnet');
         }
+
+        setWeb3(web3Instance);
+
+        const accounts = await web3Instance.eth.getAccounts();
+        if (!accounts || accounts.length === 0) {
+          throw new Error('No accounts found. Ensure MetaMask is connected.');
+        }
+        setAccounts(accounts);
+        console.log('Accounts:', accounts);
+
+        const contractInstance = new web3Instance.eth.Contract(ProductFactoryABI.abi, factoryAddress);
+        setFactoryContract(contractInstance);
+        console.log('Factory contract instance:', contractInstance);
+
+        await fetchProducts(contractInstance, web3Instance);
+
+        window.ethereum.on('accountsChanged', async (newAccounts) => {
+          if (newAccounts.length === 0) {
+            console.error('MetaMask is locked or the user has not connected any accounts');
+            setError('MetaMask is locked or the user has not connected any accounts');
+            setAccounts([]);
+          } else {
+            console.log('Accounts changed:', newAccounts);
+            setAccounts(newAccounts);
+            await fetchProducts(contractInstance, web3Instance);
+          }
+        });
       } catch (error) {
         console.error('Error initializing web3, accounts, or contract:', error);
         setError('Failed to load web3, accounts, or contract. Check console for details.');
         setLoading(false);
       }
     };
-    init();
+    initWeb3();
   }, []);
 
   const handleAddProduct = async (productName, productPrice) => {
