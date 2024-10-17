@@ -105,13 +105,10 @@ contract ProductEscrow {
 
     function createTransporter(uint _feeInEther) public {
         require(transporters[msg.sender].fee == 0, "Transporter already exists");
-
-        uint _feeInWei = _feeInEther * 1 ether;
-
-        transporters[msg.sender] = TransporterFees({ fee: _feeInWei });
+        transporters[msg.sender] = TransporterFees({ fee: _feeInEther });
         transporterAddresses.push(msg.sender);
         transporterCount++;
-        emit TransporterCreated(msg.sender, _feeInWei);
+        emit TransporterCreated(msg.sender, _feeInEther);
     }
 
     function securityDeposit() public payable onlyTransporter transporterSet {

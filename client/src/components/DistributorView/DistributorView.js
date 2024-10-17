@@ -32,9 +32,7 @@ const DistributorView = ({ products, web3, accounts, handleCreateDistributor }) 
         if (!selectedProduct) return;
 
         try {
-            const feeInWei = web3.utils.toWei(price, 'wei');
-            console.log(`Creating distributor for product: ${selectedProduct.address}, fee: ${feeInWei}`);
-            await handleCreateDistributor(selectedProduct.address, feeInWei);
+            await handleCreateDistributor(selectedProduct.address, price);
             handleCloseModal();
         } catch (error) {
             console.error('Error setting price:', error);

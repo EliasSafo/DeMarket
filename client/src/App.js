@@ -17,7 +17,7 @@ const App = () => {
   const [error, setError] = useState(null);
   const [tabIndex, setTabIndex] = useState(0); // State to handle the selected tab
 
-  const factoryAddress = '0x6DEEc10f47655C3cE2cAD9DcEA3B3340bFF73736'; // Replace with your factory contract address
+  const factoryAddress = '0xD8920d1DA02ab3b636E3C829745c0E9690CcD710'; // Replace with your factory contract address
   const sepoliaRpcUrl = "https://infura.io/v3/4d03e43876f4489c9dfd6c6df4ca3f5f";
 
   const fetchProducts = async (factoryContract, web3Instance) => {
@@ -177,11 +177,11 @@ const App = () => {
     }
 
     try {
-      const feeInWei = web3.utils.toWei(fee, 'wei');
+      const feeInEther = web3.utils.toWei(fee, 'ether');
       const productContract = new web3.eth.Contract(ProductABI.abi, productAddress);
       console.log("Product contract:", productContract);
 
-      await productContract.methods.createTransporter(feeInWei).send({
+      await productContract.methods.createTransporter(feeInEther).send({
         from: accounts[0],
       });
 
