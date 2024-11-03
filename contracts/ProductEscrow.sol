@@ -44,7 +44,7 @@ contract ProductEscrow {
     event OrderConfirmed(address indexed buyer, uint indexed price, string vcCID);
     event TransporterCreated(address transporter, uint fee);
     event TransporterSecurityDeposit(address transporter, uint price);
-    event DeliveryConfirmed(address indexed buyer, address indexed transporter, uint price);
+    event DeliveryConfirmed(address indexed buyer, address indexed transporter, uint price, string vcCID);
     event CancelDelivery(address indexed seller, address indexed transporter, uint buyerRefund);
     event ProductDeleted(uint productId, string productName);
 
@@ -56,12 +56,12 @@ contract ProductEscrow {
         buyer = payable(address(0));
     }
 
-    function confirmDelivery() public onlyBuyer transporterSet {
+    function confirmDelivery(string memory vcCID) public onlyBuyer transporterSet {
         require(block.timestamp <= purchaseTimestamp + 2 days, "Delivery confirmation period expired");
         owner.transfer(price);
         transporter.transfer(securityDepositAmount + deliveryFee);
         owner = buyer;
-        emit DeliveryConfirmed(buyer, transporter, price);
+        emit DeliveryConfirmed(buyer, transporter, price,vcCID);
     }
 
     function confirmOrder(string memory vcCID) public onlySeller {
@@ -105,13 +105,10 @@ contract ProductEscrow {
 
     function createTransporter(uint _feeInEther) public {
         require(transporters[msg.sender].fee == 0, "Transporter already exists");
-
-        uint _feeInWei = _feeInEther * 1 ether;
-
-        transporters[msg.sender] = TransporterFees({ fee: _feeInWei });
+        transporters[msg.sender] = TransporterFees({ fee: _feeInEther });
         transporterAddresses.push(msg.sender);
         transporterCount++;
-        emit TransporterCreated(msg.sender, _feeInWei);
+        emit TransporterCreated(msg.sender, _feeInEther);
     }
 
     function securityDeposit() public payable onlyTransporter transporterSet {
